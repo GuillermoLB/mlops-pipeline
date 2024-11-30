@@ -3,8 +3,15 @@ import sagemaker
 import sagemaker.session
 from sagemaker.workflow.pipeline_context import PipelineSession
 from dotenv import load_dotenv
+from sagemaker.workflow.parameters import (
+    ParameterInteger,
+    ParameterString,
+)
 import os
 import logging
+from sagemaker.sklearn.processing import SKLearnProcessor
+from sagemaker.processing import ProcessingInput, ProcessingOutput
+from sagemaker.workflow.steps import ProcessingStep
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -69,3 +76,45 @@ input_data_uri = sagemaker.s3.S3Uploader.upload(
     desired_s3_uri=base_uri,
 )
 print(input_data_uri)
+
+# Define pipeline parameters
+
+processing_instance_count = ParameterInteger(
+    name="ProcessingInstanceCount",
+    default_value=1
+)
+input_data = ParameterString(
+    name="InputData",
+    default_value=input_data_uri,
+)
+
+# Processing step
+
+framework_version = "0.23-1"
+
+sklearn_processor = SKLearnProcessor(
+    framework_version=framework_version,
+    instance_type="ml.t3.medium",
+    instance_count=processing_instance_count,
+    base_job_name="sklearn-abalone-process",
+    sagemaker_session=pipeline_session,
+    role=role,
+)  
+
+processor_args = sklearn_processor.run(
+    inputs=[
+      ProcessingInput(source=input_data, destination="/opt/ml/processing/input"),  
+    ],
+    outputs=[
+        ProcessingOutput(output_name="train", source="/opt/ml/processing/train"),
+        ProcessingOutput(output_name="validation", source="/opt/ml/processing/validation"),
+        ProcessingOutput(output_name="test", source="/opt/ml/processing/test")
+    ],
+    code="abalone/preprocessing.py",
+) 
+
+step_process = ProcessingStep(
+    name="AbaloneProcess",
+    step_args=processor_args
+)
+
