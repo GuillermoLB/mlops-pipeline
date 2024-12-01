@@ -20,6 +20,16 @@ from sagemaker.workflow.steps import TrainingStep
 # Evaluation step
 from sagemaker.processing import ScriptProcessor
 from sagemaker.workflow.properties import PropertyFile
+# Register model
+from sagemaker.model_metrics import MetricsSource, ModelMetrics 
+from sagemaker.workflow.step_collections import RegisterModel
+# Pipeline definition
+from sagemaker.workflow.pipeline import Pipeline
+import json
+# Conditional step
+from sagemaker.workflow.conditions import ConditionLessThanOrEqualTo
+from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.workflow.functions import JsonGet
 
 
 # Configure logging
@@ -95,6 +105,11 @@ processing_instance_count = ParameterInteger(
 input_data = ParameterString(
     name="InputData",
     default_value=input_data_uri,
+)
+
+model_approval_status = ParameterString(
+    name="ModelApprovalStatus",
+    default_value="PendingManualApproval"
 )
 
 # Processing step
@@ -221,3 +236,63 @@ step_eval = ProcessingStep(
     step_args=eval_args,
     property_files=[evaluation_report],
 )
+
+# Register model
+
+model_metrics = ModelMetrics(
+    model_statistics=MetricsSource(
+        s3_uri="{}/evaluation.json".format(
+            step_eval.arguments["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["S3Uri"]
+        ),
+        content_type="application/json"
+    )
+)
+step_register = RegisterModel(
+    name="AbaloneRegisterModel",
+    estimator=xgb_train,
+    model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+    content_types=["text/csv"],
+    response_types=["text/csv"],
+    inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
+    transform_instances=["ml.m5.large"],
+    model_package_group_name=model_package_group_name,
+    approval_status=model_approval_status,
+    model_metrics=model_metrics
+)
+
+# Conditional step
+
+cond_lte = ConditionLessThanOrEqualTo(
+    left=JsonGet(
+        step_name=step_eval.name,
+        property_file=evaluation_report,
+        json_path="regression_metrics.mse.value"
+    ),
+    right=6.0,
+)
+step_cond = ConditionStep(
+    name="CheckMSEAbaloneEvaluation",
+    conditions=[cond_lte],
+    if_steps=[step_register],
+    else_steps=[],
+)
+
+# Create pipeline
+
+pipeline_name = f"AbalonePipeline"
+pipeline = Pipeline(
+    name=pipeline_name,
+    parameters=[
+        processing_instance_count,
+        input_data,
+        model_approval_status,
+    ],
+    steps=[step_process, step_train, step_eval, step_cond],
+)
+
+pipeline.upsert(role_arn=role)
+
+json.loads(pipeline.definition())
+
+execution = pipeline.start()
+execution.describe()
