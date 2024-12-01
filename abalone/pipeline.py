@@ -9,9 +9,18 @@ from sagemaker.workflow.parameters import (
 )
 import os
 import logging
+# Processing step
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.workflow.steps import ProcessingStep
+# Training step
+from sagemaker.estimator import Estimator
+from sagemaker.inputs import TrainingInput
+from sagemaker.workflow.steps import TrainingStep
+# Evaluation step
+from sagemaker.processing import ScriptProcessor
+from sagemaker.workflow.properties import PropertyFile
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -118,3 +127,97 @@ step_process = ProcessingStep(
     step_args=processor_args
 )
 
+# Training step
+
+model_path = f"s3://{default_bucket}/AbaloneTrain"
+
+image_uri = sagemaker.image_uris.retrieve(
+    framework="xgboost",
+    region=region,
+    version="1.0-1",
+    py_version="py3",
+    instance_type="ml.m5.xlarge"
+)
+xgb_train = Estimator(
+    image_uri=image_uri,
+    instance_type="ml.m5.xlarge",
+    instance_count=1,
+    output_path=model_path,
+    sagemaker_session=pipeline_session,
+    role=role,
+)
+xgb_train.set_hyperparameters(
+    objective="reg:linear",
+    num_round=50,
+    max_depth=5,
+    eta=0.2,
+    gamma=4,
+    min_child_weight=6,
+    subsample=0.7,
+    silent=0
+)
+
+train_args = xgb_train.fit(
+    inputs={
+        "train": TrainingInput(
+            s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
+                "train"
+            ].S3Output.S3Uri,
+            content_type="text/csv"
+        ),
+        "validation": TrainingInput(
+            s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
+                "validation"
+            ].S3Output.S3Uri,
+            content_type="text/csv"
+        )
+    },
+)
+
+step_train = TrainingStep(
+    name="AbaloneTrain",
+    step_args = train_args
+)
+
+# Evaluation step
+
+script_eval = ScriptProcessor(
+    image_uri=image_uri,
+    command=["python3"],
+    instance_type="ml.t3.medium",
+    instance_count=1,
+    base_job_name="script-abalone-eval",
+    sagemaker_session=pipeline_session,
+    role=role,
+)
+
+evaluation_report = PropertyFile(
+    name="EvaluationReport",
+    output_name="evaluation",
+    path="evaluation.json"
+)
+
+eval_args = script_eval.run(
+        inputs=[
+        ProcessingInput(
+            source=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+            destination="/opt/ml/processing/model"
+        ),
+        ProcessingInput(
+            source=step_process.properties.ProcessingOutputConfig.Outputs[
+                "test"
+            ].S3Output.S3Uri,
+            destination="/opt/ml/processing/test"
+        )
+    ],
+    outputs=[
+        ProcessingOutput(output_name="evaluation", source="/opt/ml/processing/evaluation"),
+    ],
+    code="abalone/evaluation.py",
+)
+
+step_eval = ProcessingStep(
+    name="AbaloneEval",
+    step_args=eval_args,
+    property_files=[evaluation_report],
+)
