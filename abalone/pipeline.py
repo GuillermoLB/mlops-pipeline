@@ -166,7 +166,7 @@ xgb_train.set_hyperparameters(
     num_round=50,
     max_depth=4,
     eta=0.2,
-    gamma=4,
+    gamma=3,
     min_child_weight=6,
     subsample=0.7,
     silent=0
