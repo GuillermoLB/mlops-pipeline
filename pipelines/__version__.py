@@ -1,1 +1,6 @@
+__title__ = "mlops-pipeline"
+__description__ = "An MLOps pipeline using AWS SageMaker and Python SDK."
 __version__ = "0.1.0"
+__author__ = "GuillermoLB"
+__url__ = "https://github.com/GuillermoLB/mlops-pipeline"
+__license__ = "MIT"
