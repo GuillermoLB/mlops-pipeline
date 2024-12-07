@@ -4,7 +4,7 @@ on: workflow_dispatch
 
 env:
   AWS_REGION: us-east-1
-  SAGEMAKER_PROJECT_NAME: MLOps312x86
+  SAGEMAKER_PROJECT_NAME: MLOps3122
   EXPORT_TEMPLATE_STAGING_CONFIG: "staging-config-export.json"
   EXPORT_TEMPLATE_PROD_CONFIG: "prod-config-export.json"
 
