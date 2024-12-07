@@ -55,6 +55,12 @@ jobs:
             --param-file ${{ env.EXPORT_TEMPLATE_STAGING_CONFIG }} \
             --project-name ${{ env.SAGEMAKER_PROJECT_NAME }}
 
+      - name: Wait for endpoint to be InService
+        run: |
+          aws sagemaker wait endpoint-in-service \
+            --endpoint-name "${{ env.SAGEMAKER_PROJECT_NAME }}-staging" \
+            --region ${{ env.AWS_REGION }}
+
       - name: Test Staging
         run: | 
           echo "Test Staging... This will take about a few seconds."
