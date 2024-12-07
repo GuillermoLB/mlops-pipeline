@@ -204,7 +204,7 @@ def get_pipeline(
         max_depth=3,
         eta=0.2,
         gamma=4,
-        min_child_weight=5,
+        min_child_weight=6,
         subsample=0.7,
         silent=0,
     )
