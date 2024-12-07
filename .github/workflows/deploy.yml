@@ -58,6 +58,10 @@ jobs:
       - name: Test Staging
         run: | 
           echo "Test Staging... This will take about a few seconds."
+          python tests/test_endpoints.py \
+            --log-level INFO \
+            --import-build-config ${{ env.EXPORT_TEMPLATE_STAGING_CONFIG }} \
+            --export-test-results test-results.json
           echo "No issues found."
 
   ProductionDeploy:
