@@ -7,7 +7,7 @@ on:
       - pipelines/**
 env:
   AWS_REGION: us-east-1
-  SAGEMAKER_PROJECT_NAME: MLOps3
+  SAGEMAKER_PROJECT_NAME: MLOps312x86
 
 jobs:
   Build:
