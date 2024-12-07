@@ -57,9 +57,12 @@ jobs:
 
       - name: Wait for endpoint to be InService
         run: |
+          echo "Waiting for endpoint to be InService..."
           aws sagemaker wait endpoint-in-service \
             --endpoint-name "${{ env.SAGEMAKER_PROJECT_NAME }}-staging" \
-            --region ${{ env.AWS_REGION }}
+            --region ${{ env.AWS_REGION }} \
+            --max-attempts 60 \
+            --delay 60
 
       - name: Test Staging
         run: | 
