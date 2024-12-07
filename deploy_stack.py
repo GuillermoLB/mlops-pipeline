@@ -74,25 +74,10 @@ if __name__ == "__main__":
         )
         logging.info("Creating a new stack...")
     except cfn_client.exceptions.AlreadyExistsException:
-        stack_status = cfn_client.describe_stacks(StackName=stack_name)['Stacks'][0]['StackStatus']
-        if stack_status == 'ROLLBACK_COMPLETE':
-            logging.info("Deleting stack in ROLLBACK_COMPLETE state...")
-            cfn_client.delete_stack(StackName=stack_name)
-            waiter = cfn_client.get_waiter('stack_delete_complete')
-            waiter.wait(StackName=stack_name)
-            logging.info("Stack deleted. Creating a new stack...")
-            cfn_client.create_stack(
-                StackName=stack_name,
-                TemplateBody=template_body,
-                Parameters=parameters,
-                Tags=tags,
-            )
-            logging.info("Creating a new stack...")
-        else:
-            cfn_client.update_stack(
-                StackName=stack_name,
-                TemplateBody=template_body,
-                Parameters=parameters,
-                Tags=tags,
-            )
-            logging.info("Updating existing stack...")
+        cfn_client.update_stack(
+            StackName=stack_name,
+            TemplateBody=template_body,
+            Parameters=parameters,
+            Tags=tags,
+        )
+        logging.info("Updating existing stack...")
