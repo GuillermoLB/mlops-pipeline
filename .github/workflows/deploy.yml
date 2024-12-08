@@ -4,7 +4,7 @@ on: workflow_dispatch
 
 env:
   AWS_REGION: us-east-1
-  SAGEMAKER_PROJECT_NAME: MLOps3122
+  SAGEMAKER_PROJECT_NAME: mlops-pipeline
   EXPORT_TEMPLATE_STAGING_CONFIG: "staging-config-export.json"
   EXPORT_TEMPLATE_PROD_CONFIG: "prod-config-export.json"
 
@@ -66,9 +66,7 @@ jobs:
           echo "Waiting for endpoint to be InService..."
           aws sagemaker wait endpoint-in-service \
             --endpoint-name "${{ env.SAGEMAKER_PROJECT_NAME }}-staging" \
-            --region ${{ env.AWS_REGION }} \
-            --max-attempts 60 \
-            --delay 60
+            --region ${{ env.AWS_REGION }}
 
       - name: Test Staging
         run: | 
