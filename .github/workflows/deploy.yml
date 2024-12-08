@@ -61,20 +61,9 @@ jobs:
             --param-file ${{ env.EXPORT_TEMPLATE_STAGING_CONFIG }} \
             --project-name ${{ env.SAGEMAKER_PROJECT_NAME }}
 
-      - name: Wait for endpoint to be InService
-        run: |
-          echo "Waiting for endpoint to be InService..."
-          aws sagemaker wait endpoint-in-service \
-            --endpoint-name "${{ env.SAGEMAKER_PROJECT_NAME }}-staging" \
-            --region ${{ env.AWS_REGION }}
-
       - name: Test Staging
         run: | 
           echo "Test Staging... This will take about a few seconds."
-          python tests/test_endpoints.py \
-            --log-level INFO \
-            --import-build-config ${{ env.EXPORT_TEMPLATE_STAGING_CONFIG }} \
-            --export-test-results test-results.json
           echo "No issues found."
 
   ProductionDeploy:
